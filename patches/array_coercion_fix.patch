@@ -1,0 +1,13 @@
+diff --git a/numpy/core/src/multiarray/array_coercion.c b/numpy/core/src/multiarray/array_coercion.c
+index 22050a56f..8f0abe6bb 100644
+--- a/numpy/core/src/multiarray/array_coercion.c
++++ b/numpy/core/src/multiarray/array_coercion.c
+@@ -574,7 +574,7 @@ npy_new_coercion_cache(
+  * @param current
+  * @return next coercion cache object (or NULL)
+  */
+-NPY_NO_EXPORT coercion_cache_obj *
++coercion_cache_obj *
+ npy_unlink_coercion_cache(coercion_cache_obj *current)
+ {
+     coercion_cache_obj *next = current->next;

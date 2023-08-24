@@ -1,0 +1,22 @@
+diff --git a/numpy/__init__.py b/numpy/__init__.py
+index e20a83ab1..3fc62b086 100644
+--- a/numpy/__init__.py
++++ b/numpy/__init__.py
+@@ -416,6 +416,17 @@ def _mac_os_check():
+     # Note that this will currently only make a difference on Linux
+     core.multiarray._set_madvise_hugepage(use_hugepage)
+ 
++    # Register mkl_umath universal function loops to be used by NumPy's universal functions
++    # use mkl_umath.restore() to use original NumPy's loops
++    try:
++        import mkl_umath
++        if hasattr(mkl_umath, 'use_in_numpy'):
++            mkl_umath.use_in_numpy()
++            setbufsize(16*62500)
++        del mkl_umath
++    except ModuleNotFoundError:
++        pass
++
+     # Give a warning if NumPy is reloaded or imported on a sub-interpreter
+     # We do this from python, since the C-module may not be reloaded and
+     # it is tidier organized.

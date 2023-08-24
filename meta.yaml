@@ -1,0 +1,397 @@
+{% set version = "1.24.3" %}
+{% set buildnumber = 2 %}
+
+{% set major = '.'.join(version.split('.')[0:2]) %}
+
+{% set mkl_fft_version = '1.3.6' %}
+{% set mkl_fft_buildnumber = 58 %}
+
+{% set mkl_random_version = '1.2.2' %}
+{% set mkl_random_buildnumber = 78 %}
+
+{% set mkl_umath_version = '0.1.1' %}
+{% set mkl_umath_buildnumber = 88 %}
+
+
+package:
+  name: numpy_and_dev
+  version: {{ version }}
+
+source:
+  - url: https://github.com/numpy/numpy/releases/download/v{{ version }}/numpy-{{ version }}.tar.gz
+    sha256: ab344f1bf21f140adab8e47fdbc7c35a477dc01408791f8ba00d018dd0bc5155
+    patches:
+      - patches/intel_mkl-version.patch         [not nomkl]
+      - patches/osx-dist.patch                  [osx]
+      - patches/intel_use_mkl_fft.patch         [not nomkl]
+      - patches/intel_ccompiler_opt_fix.patch
+      - patches/intel_init_mkl.patch            [not nomkl]
+      - patches/intel_use_mkl_umath.patch       [not nomkl]
+      - patches/array_coercion_fix.patch        [(not nomkl) and win]
+      - patches/popcnt_fix.patch                [(not nomkl) and win]
+      - patches/mute_tests.patch                [not nomkl]
+      - patches/wheel_install_description.patch
+      # numpy now uses C99 strictly, which VS does not support entirely
+      # this patches in VS supported __restrict qualifier
+      - patches/pocketfft_vs_restrict.patch        [win]
+  - git_url: https://github.com/IntelPython/mkl_fft.git
+    git_tag: v{{ mkl_fft_version }}
+    folder: mkl_fft
+  - git_url: https://github.com/IntelPython/mkl_random.git
+    git_rev: b57e56534c83d67b3a6d34b244f79d5ca2d3faf8
+    patches:
+      - patches/mute_mkl_random_test.patch
+    folder: mkl_random
+  - git_url: https://github.com/IntelPython/mkl_umath.git
+    git_tag: v{{ mkl_umath_version }}.post0
+    folder: mkl_umath
+    patches:
+      - patches/mkl_umath_remove_floor_divide.patch
+
+build:
+  number: {{ buildnumber }}
+  script_env:
+    - WHEELS_OUTPUT_FOLDER
+  features:
+    - nomkl                   [x86 and nomkl]
+  force_use_keys:
+    - python
+  include_recipe: False
+
+requirements:
+  build:
+    - patch     # [not win]
+    - m2-patch  # [win]
+
+outputs:
+  - name: numpy-base
+    version: {{ version }}
+    build:
+      include_recipe: False
+      script_env:
+        - WHEELS_OUTPUT_FOLDER
+    script: install_base.sh   # [unix]
+    script: install_base.bat  # [win]
+    requirements:
+      build:
+        - {{ compiler('c') }}
+        - {{ compiler('cxx') }}     
+        - cython    
+        - python 
+      host:
+        - cython        <3
+        - python
+        - pip
+        - setuptools <60.0.0
+        - wheel         >=0.37.0
+        - mkl-devel >=2023.0             [not nomkl]
+        - mkl-service >=2.3.0            [not nomkl]
+        - libcxx                         # [osx]
+      run:
+        - python
+        - dpcpp_cpp_rt
+        - intelpython >=2019.0
+        - {{ pin_compatible('mkl') }}  [not nomkl]
+        - tbb4py               [not nomkl] # mkl depends on tbb, numpy adds Python specifics
+        - mkl-service >=2.3.0 [not nomkl]
+    test:
+      commands:
+        - test -e $SP_DIR/numpy/distutils/site.cfg     # [unix]
+        - IF NOT EXIST %SP_DIR%\numpy\distutils\site.cfg exit 1  # [win]
+    about:
+      home: http://numpy.scipy.org/
+      license: BSD-3-Clause
+      license_file: LICENSE.txt
+      description: |
+        <strong>LEGAL NOTICE: Use of this software package is subject to the
+        software license agreement (as set forth above, in the license section of
+        the installed Conda package and/or the README file) and all notices,
+        disclaimers or license terms for third party or open source software
+        included in or with the software.</strong>
+        <br/><br/>
+        EULA: <a href="https://opensource.org/licenses/BSD-3-Clause" target="_blank">BSD-3-Clause</a>
+        <br/><br/>
+
+  - name: numpy-devel
+    version: {{ version }}
+    build:
+      include_recipe: False
+      run_exports:
+        - {{ pin_subpackage('numpy', min_pin='x.x', max_pin='x.x') }}
+    script: copy_intel_tester.sh  # [unix]
+    script: copy_intel_tester.bat # [win]             
+    requirements:
+      host:
+        - python
+        # these import blas metapackages to ensure consistency with downstream libs that also use blas
+        - mkl-devel >=2023.0             [not nomkl]
+      run:
+        - python
+        - {{ pin_subpackage('numpy-base', exact=True) }}
+        - dpcpp_cpp_rt
+        - intelpython >=2019.0
+        - tbb4py  [not nomkl]
+    about:
+      home: http://numpy.scipy.org/
+      license: BSD-3-Clause
+      license_file: LICENSE.txt
+      description: |
+        <strong>LEGAL NOTICE: Use of this software package is subject to the
+        software license agreement (as set forth above, in the license section of
+        the installed Conda package and/or the README file) and all notices,
+        disclaimers or license terms for third party or open source software
+        included in or with the software.</strong>
+        <br/><br/>
+        EULA: <a href="https://opensource.org/licenses/BSD-3-Clause" target="_blank">BSD-3-Clause</a>
+        <br/><br/>
+
+  - name: numpy
+    version: {{ version }}
+    build:
+      include_recipe: False
+    requirements:
+      build:
+        # for runtime alignment
+        - {{ compiler('c') }} #[osx and py>38]
+        - {{ compiler('cxx') }}
+      host:
+        - python
+        - pip
+        - cython <3
+        - setuptools <60.0.0
+        - wheel >=0.37.0
+      run:
+        - python
+        - intelpython >=2019.0
+        - {{ pin_subpackage('numpy-base', exact=True) }}
+        - {{ pin_subpackage('mkl_fft') }}  # [not nomkl]
+        - {{ pin_subpackage('mkl_random') }}  # [not nomkl]
+        - {{ pin_subpackage('mkl_umath') }}  # [not nomkl]
+    test:
+      files:
+        - intel_tester_config.py
+      requires:
+        - {{ compiler('c') }} #[osx and py>38]
+        - setuptools <60.0.0
+        - pytz
+        - pytest
+        - hypothesis
+        - typing-extensions
+      commands:
+        # set tests to skip
+        {% set tests_to_skip = "_not_a_real_test" %}
+        # there are some tests that cannot really work in emulation, see e.g. numpy/numpy#20445
+        {% set tests_to_skip = tests_to_skip + " or Test_ARM_Features" %}
+        # test_new_policy reruns part of test suite; including a CPU feature test that fails in emulation
+        {% set tests_to_skip = tests_to_skip + " or test_new_policy" %}
+        # flaky refcount-based test; already skipped upstream for win+py39
+        {% set tests_to_skip = tests_to_skip + " or test_partial_iteration_cleanup" %}      # [osx or win]
+        # On osx: FAILED core/tests/test_limited_api.py::test_limited_api - subprocess.CalledProcessor
+        {% set tests_to_skip = tests_to_skip + " or test_limited_api" %}   # [osx]
+        # Fails on unix TODO - investigate this test
+        {% set tests_to_skip = tests_to_skip + " or test_unary_spurious_fpexception" %}     # [unix]
+        {% set tests_to_skip = tests_to_skip + " or test_overrides" %}
+        {% set tests_to_skip = tests_to_skip + " or test_all" %}
+        {% set tests_to_skip = tests_to_skip + " or test_ifft" %}
+        {% set tests_to_skip = tests_to_skip + " or test_all_modules_are_expected" %}
+        # for following 2 tests: Change to numpy.__init__ raised umath buffer size and triggered use of MKL's VML. VML functions do not set floating point error state, and hence some numpy tests expecting FloatingPointError to be raised may fail.
+        {% set tests_to_skip = tests_to_skip + " or test_log_values" %}    # [win]
+        {% set tests_to_skip = tests_to_skip + " or test_arcsincos" %}    # [win]
+        # fails on Windows due to VS C compiler not being strictly C99 compliant
+        {% set tests_to_skip = tests_to_skip + " or test_unary_spurious_fpexception" %} # [win]
+        {% set label_value = "'full'" %}  # [unix]
+        {% set label_value = "'fast'" %}  # [win]
+        {% set param = "verbose=2, label=" + label_value + ", tests=None" %}
+        {% set extra = "extra_argv=['-k', 'not (" + tests_to_skip + ")']" %}
+
+        # test commands
+        - python -c "import numpy as np; print(np.__mkl_version__)"
+        - f2py -h                # [unix]
+        # - python -c "from intel_tester import test_routine; test_routine.test_exec()"
+        - python -c "import numpy; numpy.test({{ param }}, {{ extra }})"
+      imports:
+        - numpy
+        - numpy.core.multiarray
+        - numpy.core.numeric
+        - numpy.core.umath
+        - numpy.linalg.lapack_lite
+        - numpy.random.mtrand
+    about:
+      home: http://numpy.scipy.org/
+      license: BSD-3-Clause
+      license_file: LICENSE.txt
+      summary: 'Array processing for numbers, strings, records, and objects.'
+      description: |
+        <strong>LEGAL NOTICE: Use of this software package is subject to the
+        software license agreement (as set forth above, in the license section of
+        the installed Conda package and/or the README file) and all notices,
+        disclaimers or license terms for third party or open source software
+        included in or with the software.</strong>
+        <br/><br/>
+        EULA: <a href="https://opensource.org/licenses/BSD-3-Clause" target="_blank">BSD-3-Clause</a>
+        <br/><br/>
+        NumPy is the fundamental package needed for scientific computing with Python.
+      doc_url: https://docs.scipy.org/doc/numpy-1.17.0/reference/
+      dev_url: https://github.com/numpy/numpy
+      dev_source_url: https://github.com/numpy/numpy/tree/master/doc
+
+  - name: mkl_fft
+    version: {{ mkl_fft_version }}
+    script: install_mkl_fft.bat  # [win]
+    script: install_mkl_fft.sh   # [not win]
+    source:
+      git_url: https://github.com/IntelPython/mkl_fft.git
+      git_tag: v{{ mkl_fft_version }}
+    build:
+      number: {{ mkl_fft_buildnumber }}
+      include_recipe: False
+      script_env:
+        - WHEELS_OUTPUT_FOLDER
+    requirements:
+      build:
+        - {{ compiler('c') }}            
+      host:
+        - python
+        - setuptools <60.0.0
+        - mkl-devel >=2023.0 # [not nomkl]
+        - dpcpp_cpp_rt >=2023.0
+        - cython <3
+        - {{ pin_subpackage('numpy-base') }}
+        - wheel
+        - libcxx                         # [osx]
+      run:
+        - python
+        - {{ pin_compatible('mkl') }}  [not nomkl]
+        - {{ pin_subpackage('numpy-base', max_pin='x.x') }}
+        - dpcpp_cpp_rt >=2023.0
+        - intelpython >=2019.0
+    test:
+      commands:
+        - pytest -v --pyargs mkl_fft
+      requires:
+        - pytest
+        - nose
+      imports:
+        - mkl_fft
+        - mkl_fft._numpy_fft
+        - mkl_fft._scipy_fft
+    about:
+      home: http://github.com/IntelPython/mkl_fft
+      license: BSD-3-Clause
+      license_file: LICENSE.txt
+      summary: NumPy-based implementation of Fast Fourier Transform using Intel(R) Math Kernel Library (Intel(R) MKL).
+      description: |
+        <strong>LEGAL NOTICE: Use of this software package is subject to the
+        software license agreement (as set forth above, in the license section of
+        the installed Conda package and/or the README file) and all notices,
+        disclaimers or license terms for third party or open source software
+        included in or with the software.</strong>
+        <br/><br/>
+        EULA: <a href="https://opensource.org/licenses/BSD-3-Clause" target="_blank">BSD-3-Clause</a>
+        <br/><br/>
+
+  - name: mkl_random
+    version: {{ mkl_random_version }}
+    script: install_mkl_random.bat  # [win]
+    script: install_mkl_random.sh   # [not win]
+    source:
+      git_url: https://github.com/IntelPython/mkl_random.git
+      git_tag: v{{ mkl_random_version }}.post2
+    build:
+      number: {{ mkl_random_buildnumber }}
+      include_recipe: False
+      script_env:
+        - WHEELS_OUTPUT_FOLDER
+    requirements:
+      build:
+        - {{ compiler('c') }}       
+        - {{ compiler('cxx') }}     
+      host:
+        - python
+        - setuptools <60.0.0
+        - setuptools
+        - mkl-devel >=2023.0   # [not nomkl]
+        - dpcpp_cpp_rt >=2023.0
+        - cython <3
+        - {{ pin_subpackage('numpy-base') }}
+        - wheel
+        - libcxx                         # [osx]
+      run:
+        - python
+        - {{ pin_compatible('mkl') }}  [not nomkl]
+        - dpcpp_cpp_rt >=2023.0
+        - {{ pin_subpackage('numpy-base', max_pin='x.x') }}
+        - intelpython >=2019.0
+    test:
+      commands:
+        - nosetests -v mkl_random
+      requires:
+        - nose
+      imports:
+        - mkl_random
+        - mkl_random.mklrand
+    about:
+      home: http://github.com/IntelPython/mkl_random
+      license: BSD-3-Clause
+      license_file: LICENSE.txt
+      summary: NumPy-based implementation of Fast Fourier Transform using Intel(R) Math Kernel Library (Intel(R) MKL).
+      description: |
+        <strong>LEGAL NOTICE: Use of this software package is subject to the
+        software license agreement (as set forth above, in the license section of
+        the installed Conda package and/or the README file) and all notices,
+        disclaimers or license terms for third party or open source software
+        included in or with the software.</strong>
+        <br/><br/>
+        EULA: <a href="https://opensource.org/licenses/BSD-3-Clause" target="_blank">BSD-3-Clause</a>
+        <br/><br/>
+
+  - name: mkl_umath
+    version: {{ mkl_umath_version }}
+    script: install_mkl_umath.bat  # [win]
+    script: install_mkl_umath.sh   # [not win]
+    source:
+      git_url: https://github.com/IntelPython/mkl_umath.git
+      git_tag: v{{ mkl_umath_version }}.post0
+    build:
+      number: {{ mkl_umath_buildnumber }}
+      include_recipe: False
+      script_env:
+        - WHEELS_OUTPUT_FOLDER
+    requirements:
+      build:
+        - {{ compiler('c') }}             
+        - {{ compiler('icc') }} >=2021.*
+      host:
+        - python
+        - setuptools <60.0.0
+        - mkl-devel >=2023.0 # [not nomkl]
+        - dpcpp_cpp_rt >=2023.0
+        - cython <3
+        - {{ pin_subpackage('numpy-base') }}
+        - wheel
+        - libcxx                         # [osx]
+      run:
+        - python
+        - {{ pin_compatible('mkl') }}  [not nomkl]
+        - dpcpp_cpp_rt >=2023.0
+        - {{ pin_subpackage('numpy-base', max_pin='x.x') }}
+        - intelpython >=2019.0
+    test:
+      imports:
+        - mkl_umath
+        - mkl_umath._ufuncs
+        - mkl_umath._patch
+    about:
+      home: https://github.com/IntelPython/mkl_umath.git
+      license: BSD-3-Clause
+      license_file: LICENSE.txt
+      summary: NumPy-based implementation of universal math functions using Intel(R) Math Kernel Library (Intel(R) MKL) and Intel(R) C Compiler.
+      description: |
+        <strong>LEGAL NOTICE: Use of this software package is subject to the
+        software license agreement (as set forth above, in the license section of
+        the installed Conda package and/or the README file) and all notices,
+        disclaimers or license terms for third party or open source software
+        included in or with the software.</strong>
+        <br/><br/>
+        EULA: <a href="https://opensource.org/licenses/BSD-3-Clause" target="_blank">BSD-3-Clause</a>
+        <br/><br/>

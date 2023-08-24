@@ -1,0 +1,142 @@
+diff --git a/mkl_umath/generate_umath.py b/mkl_umath/generate_umath.py
+index 7ff39b2..982a5bf 100644
+--- a/mkl_umath/generate_umath.py
++++ b/mkl_umath/generate_umath.py
+@@ -343,12 +343,6 @@ defdict = {
+           None, 
+           TD(inexactvec + cmplxvec),
+           ),
+-'floor_divide':
+-    Ufunc(2, 1, None,
+-          docstrings.get('numpy.core.umath.floor_divide'),
+-          None,
+-          TD(inexactvec + cmplxvec),
+-          ),
+ 'true_divide':
+     Ufunc(2, 1, None,
+           docstrings.get('numpy.core.umath.true_divide'),
+diff --git a/mkl_umath/src/loops_intel.c.src b/mkl_umath/src/loops_intel.c.src
+index 0a199dc..873604c 100644
+--- a/mkl_umath/src/loops_intel.c.src
++++ b/mkl_umath/src/loops_intel.c.src
+@@ -1887,17 +1887,6 @@ NPY_NO_EXPORT void
+ }
+ /**end repeat1**/
+ 
+-NPY_NO_EXPORT void
+-@TYPE@_floor_divide(char **args, npy_intp *dimensions, npy_intp *steps, void *NPY_UNUSED(func))
+-{
+-    BINARY_LOOP {
+-        const @type@ in1 = *(@type@ *)ip1;
+-        const @type@ in2 = *(@type@ *)ip2;
+-        @type@ mod;
+-        *((@type@ *)op1) = divmod@c@(in1, in2, &mod);
+-    }
+-}
+-
+ NPY_NO_EXPORT void
+ @TYPE@_remainder(char **args, npy_intp *dimensions, npy_intp *steps, void *NPY_UNUSED(func))
+ {
+@@ -2272,27 +2261,6 @@ NPY_NO_EXPORT void
+     }
+ }
+ 
+-NPY_NO_EXPORT void
+-@TYPE@_floor_divide(char **args, npy_intp *dimensions, npy_intp *steps, void *NPY_UNUSED(func))
+-{
+-    BINARY_LOOP {
+-        const @ftype@ in1r = ((@ftype@ *)ip1)[0];
+-        const @ftype@ in1i = ((@ftype@ *)ip1)[1];
+-        const @ftype@ in2r = ((@ftype@ *)ip2)[0];
+-        const @ftype@ in2i = ((@ftype@ *)ip2)[1];
+-        if (fabs@c@(in2r) >= fabs@c@(in2i)) {
+-            const @ftype@ rat = in2i/in2r;
+-            ((@ftype@ *)op1)[0] = floor@c@((in1r + in1i*rat)/(in2r + in2i*rat));
+-            ((@ftype@ *)op1)[1] = 0;
+-        }
+-        else {
+-            const @ftype@ rat = in2r/in2i;
+-            ((@ftype@ *)op1)[0] = floor@c@((in1r*rat + in1i)/(in2i + in2r*rat));
+-            ((@ftype@ *)op1)[1] = 0;
+-        }
+-    }
+-}
+-
+ /**begin repeat1
+  * #kind= greater, greater_equal, less, less_equal, equal, not_equal#
+  * #OP = CGT, CGE, CLT, CLE, CEQ, CNE#
+diff --git a/mkl_umath/src/loops_intel.h.src b/mkl_umath/src/loops_intel.h.src
+index c45bab4..356a542 100644
+--- a/mkl_umath/src/loops_intel.h.src
++++ b/mkl_umath/src/loops_intel.h.src
+@@ -168,9 +168,6 @@ NPY_NO_EXPORT void
+ @TYPE@_@kind@(char **args, npy_intp *dimensions, npy_intp *steps, void *NPY_UNUSED(func));
+ /**end repeat1**/
+ 
+-NPY_NO_EXPORT void
+-@TYPE@_floor_divide(char **args, npy_intp *dimensions, npy_intp *steps, void *NPY_UNUSED(func));
+-
+ NPY_NO_EXPORT void
+ @TYPE@_remainder(char **args, npy_intp *dimensions, npy_intp *steps, void *NPY_UNUSED(func));
+ 
+@@ -249,9 +246,6 @@ NPY_NO_EXPORT void
+ NPY_NO_EXPORT void
+ @TYPE@_divide(char **args, npy_intp *dimensions, npy_intp *steps, void *NPY_UNUSED(func));
+ 
+-NPY_NO_EXPORT void
+-@TYPE@_floor_divide(char **args, npy_intp *dimensions, npy_intp *steps, void *NPY_UNUSED(func));
+-
+ 
+ /**begin repeat1
+  * arithmetic
+diff --git a/mkl_umath/ufunc_docstrings.py b/mkl_umath/ufunc_docstrings.py
+index 5abc3af..d130c2c 100644
+--- a/mkl_umath/ufunc_docstrings.py
++++ b/mkl_umath/ufunc_docstrings.py
+@@ -1393,45 +1393,6 @@ add_newdoc('numpy.core.umath', 'floor',
+ 
+     """)
+ 
+-add_newdoc('numpy.core.umath', 'floor_divide',
+-    """
+-    Return the largest integer smaller or equal to the division of the inputs.
+-    It is equivalent to the Python ``//`` operator and pairs with the
+-    Python ``%`` (`remainder`), function so that ``a = a % b + b * (a // b)``
+-    up to roundoff.
+-
+-    Parameters
+-    ----------
+-    x1 : array_like
+-        Numerator.
+-    x2 : array_like
+-        Denominator.
+-        $BROADCASTABLE_2
+-    $PARAMS
+-
+-    Returns
+-    -------
+-    y : ndarray
+-        y = floor(`x1`/`x2`)
+-        $OUT_SCALAR_2
+-
+-    See Also
+-    --------
+-    remainder : Remainder complementary to floor_divide.
+-    divmod : Simultaneous floor division and remainder.
+-    divide : Standard division.
+-    floor : Round a number to the nearest integer toward minus infinity.
+-    ceil : Round a number to the nearest integer toward infinity.
+-
+-    Examples
+-    --------
+-    >>> np.floor_divide(7,3)
+-    2
+-    >>> np.floor_divide([1., 2., 3., 4.], 2.5)
+-    array([ 0.,  0.,  1.,  1.])
+-
+-    """)
+-
+ add_newdoc('numpy.core.umath', 'fmod',
+     """
+     Return the element-wise remainder of division.
+

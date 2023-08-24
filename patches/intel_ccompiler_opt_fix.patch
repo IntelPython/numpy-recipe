@@ -1,0 +1,25 @@
+diff --git a/numpy/distutils/ccompiler_opt.py b/numpy/distutils/ccompiler_opt.py
+index 2019dcb25..63058713c 100644
+--- a/numpy/distutils/ccompiler_opt.py
++++ b/numpy/distutils/ccompiler_opt.py
+@@ -227,7 +227,7 @@ class _Config:
+         ),
+         msvc = dict(
+             native = None,
+-            opt = '/O2',
++            opt = '/O3',
+             werror = '/WX',
+         )
+     )
+diff --git a/numpy/distutils/tests/test_ccompiler_opt.py b/numpy/distutils/tests/test_ccompiler_opt.py
+index 287a683c8..d3c1314c8 100644
+--- a/numpy/distutils/tests/test_ccompiler_opt.py
++++ b/numpy/distutils/tests/test_ccompiler_opt.py
+@@ -647,7 +647,7 @@ class _Test_CCompilerOpt(object):
+             self.expect_target_flags(
+                 "/*@targets baseline %s */" % policy,
+                 gcc={"baseline":".*-O3.*"}, icc={"baseline":".*-O3.*"},
+-                iccw={"baseline":".*/O3.*"}, msvc={"baseline":".*/O2.*"},
++                iccw={"baseline":".*/O3.*"}, msvc={"baseline":".*/O3.*"},
+                 unknown={"baseline":".*"}
+             )

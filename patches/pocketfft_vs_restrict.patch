@@ -1,0 +1,326 @@
+diff --git a/numpy/fft/_pocketfft.c b/numpy/fft/_pocketfft.c
+index 8ca408b..e59fad0 100644
+--- a/numpy/fft/_pocketfft.c
++++ b/numpy/fft/_pocketfft.c
+@@ -45,7 +45,7 @@ typedef struct rfft_plan_i * rfft_plan;
+ 
+ // adapted from https://stackoverflow.com/questions/42792939/
+ // CAUTION: this function only works for arguments in the range [-0.25; 0.25]!
+-static void my_sincosm1pi (double a, double *restrict res)
++static void my_sincosm1pi (double a, double *__restrict res)
+   {
+   double s = a * a;
+   /* Approximate cos(pi*x)-1 for x in [-0.25,0.25] */
+@@ -71,7 +71,7 @@ static void my_sincosm1pi (double a, double *restrict res)
+   res[1] = s;
+   }
+ 
+-NOINLINE static void calc_first_octant(size_t den, double * restrict res)
++NOINLINE static void calc_first_octant(size_t den, double * __restrict res)
+   {
+   size_t n = (den+4)>>3;
+   if (n==0) return;
+@@ -101,9 +101,9 @@ NOINLINE static void calc_first_octant(size_t den, double * restrict res)
+     res[2*i] += 1.;
+   }
+ 
+-NOINLINE static void calc_first_quadrant(size_t n, double * restrict res)
++NOINLINE static void calc_first_quadrant(size_t n, double * __restrict res)
+   {
+-  double * restrict p = res+n;
++  double * __restrict p = res+n;
+   calc_first_octant(n<<1, p);
+   size_t ndone=(n+2)>>2;
+   size_t i=0, idx1=0, idx2=2*ndone-2;
+@@ -121,7 +121,7 @@ NOINLINE static void calc_first_quadrant(size_t n, double * restrict res)
+     }
+   }
+ 
+-NOINLINE static void calc_first_half(size_t n, double * restrict res)
++NOINLINE static void calc_first_half(size_t n, double * __restrict res)
+   {
+   int ndone=(n+1)>>1;
+   double * p = res+n-1;
+@@ -148,7 +148,7 @@ NOINLINE static void calc_first_half(size_t n, double * restrict res)
+     }
+   }
+ 
+-NOINLINE static void fill_first_quadrant(size_t n, double * restrict res)
++NOINLINE static void fill_first_quadrant(size_t n, double * __restrict res)
+   {
+   const double hsqt2 = 0.707106781186547524400844362104849;
+   size_t quart = n>>2;
+@@ -161,7 +161,7 @@ NOINLINE static void fill_first_quadrant(size_t n, double * restrict res)
+     }
+   }
+ 
+-NOINLINE static void fill_first_half(size_t n, double * restrict res)
++NOINLINE static void fill_first_half(size_t n, double * __restrict res)
+   {
+   size_t half = n>>1;
+   if ((n&3)==0)
+@@ -178,7 +178,7 @@ NOINLINE static void fill_first_half(size_t n, double * restrict res)
+       }
+   }
+ 
+-NOINLINE static void fill_second_half(size_t n, double * restrict res)
++NOINLINE static void fill_second_half(size_t n, double * __restrict res)
+   {
+   if ((n&1)==0)
+     for (size_t i=0; i<n; ++i)
+@@ -191,7 +191,7 @@ NOINLINE static void fill_second_half(size_t n, double * restrict res)
+       }
+   }
+ 
+-NOINLINE static void sincos_2pibyn_half(size_t n, double * restrict res)
++NOINLINE static void sincos_2pibyn_half(size_t n, double * __restrict res)
+   {
+   if ((n&3)==0)
+     {
+@@ -208,7 +208,7 @@ NOINLINE static void sincos_2pibyn_half(size_t n, double * restrict res)
+     calc_first_half(n, res);
+   }
+ 
+-NOINLINE static void sincos_2pibyn(size_t n, double * restrict res)
++NOINLINE static void sincos_2pibyn(size_t n, double * __restrict res)
+   {
+   sincos_2pibyn_half(n, res);
+   fill_second_half(n, res);
+@@ -309,8 +309,8 @@ typedef struct cfftp_plan_i * cfftp_plan;
+ /* a *= b */
+ #define MULPMSIGNCEQ(a,b) { double xtmp=a.r; a.r=b.r*a.r-sign*b.i*a.i; a.i=b.r*a.i+sign*b.i*xtmp; }
+ 
+-NOINLINE static void pass2b (size_t ido, size_t l1, const cmplx * restrict cc,
+-  cmplx * restrict ch, const cmplx * restrict wa)
++NOINLINE static void pass2b (size_t ido, size_t l1, const cmplx * __restrict cc,
++  cmplx * __restrict ch, const cmplx * __restrict wa)
+   {
+   const size_t cdim=2;
+ 
+@@ -330,8 +330,8 @@ NOINLINE static void pass2b (size_t ido, size_t l1, const cmplx * restrict cc,
+       }
+   }
+ 
+-NOINLINE static void pass2f (size_t ido, size_t l1, const cmplx * restrict cc,
+-  cmplx * restrict ch, const cmplx * restrict wa)
++NOINLINE static void pass2f (size_t ido, size_t l1, const cmplx * __restrict cc,
++  cmplx * __restrict ch, const cmplx * __restrict wa)
+   {
+   const size_t cdim=2;
+ 
+@@ -377,8 +377,8 @@ NOINLINE static void pass2f (size_t ido, size_t l1, const cmplx * restrict cc,
+         A_EQ_B_MUL_C (CH(i,k,u1),WA(u1-1,i),da) \
+         A_EQ_B_MUL_C (CH(i,k,u2),WA(u2-1,i),db) \
+         }
+-NOINLINE static void pass3b (size_t ido, size_t l1, const cmplx * restrict cc,
+-  cmplx * restrict ch, const cmplx * restrict wa)
++NOINLINE static void pass3b (size_t ido, size_t l1, const cmplx * __restrict cc,
++  cmplx * __restrict ch, const cmplx * __restrict wa)
+   {
+   const size_t cdim=3;
+   const double tw1r=-0.5, tw1i= 0.86602540378443864676;
+@@ -414,8 +414,8 @@ NOINLINE static void pass3b (size_t ido, size_t l1, const cmplx * restrict cc,
+         A_EQ_CB_MUL_C (CH(i,k,u1),WA(u1-1,i),da) \
+         A_EQ_CB_MUL_C (CH(i,k,u2),WA(u2-1,i),db) \
+         }
+-NOINLINE static void pass3f (size_t ido, size_t l1, const cmplx * restrict cc,
+-  cmplx * restrict ch, const cmplx * restrict wa)
++NOINLINE static void pass3f (size_t ido, size_t l1, const cmplx * __restrict cc,
++  cmplx * __restrict ch, const cmplx * __restrict wa)
+   {
+   const size_t cdim=3;
+   const double tw1r=-0.5, tw1i= -0.86602540378443864676;
+@@ -441,8 +441,8 @@ NOINLINE static void pass3f (size_t ido, size_t l1, const cmplx * restrict cc,
+       }
+   }
+ 
+-NOINLINE static void pass4b (size_t ido, size_t l1, const cmplx * restrict cc,
+-  cmplx * restrict ch, const cmplx * restrict wa)
++NOINLINE static void pass4b (size_t ido, size_t l1, const cmplx * __restrict cc,
++  cmplx * __restrict ch, const cmplx * __restrict wa)
+   {
+   const size_t cdim=4;
+ 
+@@ -483,8 +483,8 @@ NOINLINE static void pass4b (size_t ido, size_t l1, const cmplx * restrict cc,
+         }
+       }
+   }
+-NOINLINE static void pass4f (size_t ido, size_t l1, const cmplx * restrict cc,
+-  cmplx * restrict ch, const cmplx * restrict wa)
++NOINLINE static void pass4f (size_t ido, size_t l1, const cmplx * __restrict cc,
++  cmplx * __restrict ch, const cmplx * __restrict wa)
+   {
+   const size_t cdim=4;
+ 
+@@ -554,8 +554,8 @@ NOINLINE static void pass4f (size_t ido, size_t l1, const cmplx * restrict cc,
+         A_EQ_B_MUL_C (CH(i,k,u1),WA(u1-1,i),da) \
+         A_EQ_B_MUL_C (CH(i,k,u2),WA(u2-1,i),db) \
+         }
+-NOINLINE static void pass5b (size_t ido, size_t l1, const cmplx * restrict cc,
+-  cmplx * restrict ch, const cmplx * restrict wa)
++NOINLINE static void pass5b (size_t ido, size_t l1, const cmplx * __restrict cc,
++  cmplx * __restrict ch, const cmplx * __restrict wa)
+   {
+   const size_t cdim=5;
+   const double tw1r= 0.3090169943749474241,
+@@ -597,8 +597,8 @@ NOINLINE static void pass5b (size_t ido, size_t l1, const cmplx * restrict cc,
+         A_EQ_CB_MUL_C (CH(i,k,u1),WA(u1-1,i),da) \
+         A_EQ_CB_MUL_C (CH(i,k,u2),WA(u2-1,i),db) \
+         }
+-NOINLINE static void pass5f (size_t ido, size_t l1, const cmplx * restrict cc,
+-  cmplx * restrict ch, const cmplx * restrict wa)
++NOINLINE static void pass5f (size_t ido, size_t l1, const cmplx * __restrict cc,
++  cmplx * __restrict ch, const cmplx * __restrict wa)
+   {
+   const size_t cdim=5;
+   const double tw1r= 0.3090169943749474241,
+@@ -657,8 +657,8 @@ NOINLINE static void pass5f (size_t ido, size_t l1, const cmplx * restrict cc,
+         MULPMSIGNC (CH(i,k,u2),WA(u2-1,i),db) \
+         }
+ 
+-NOINLINE static void pass7(size_t ido, size_t l1, const cmplx * restrict cc,
+-  cmplx * restrict ch, const cmplx * restrict wa, const int sign)
++NOINLINE static void pass7(size_t ido, size_t l1, const cmplx * __restrict cc,
++  cmplx * __restrict ch, const cmplx * __restrict wa, const int sign)
+   {
+   const size_t cdim=7;
+   const double tw1r= 0.623489801858733530525,
+@@ -724,8 +724,8 @@ NOINLINE static void pass7(size_t ido, size_t l1, const cmplx * restrict cc,
+         MULPMSIGNC (CH(i,k,u2),WA(u2-1,i),db) \
+         }
+ 
+-NOINLINE static void pass11 (size_t ido, size_t l1, const cmplx * restrict cc,
+-  cmplx * restrict ch, const cmplx * restrict wa, const int sign)
++NOINLINE static void pass11 (size_t ido, size_t l1, const cmplx * __restrict cc,
++  cmplx * __restrict ch, const cmplx * __restrict wa, const int sign)
+   {
+   const size_t cdim=11;
+   const double tw1r =        0.8412535328311811688618,
+@@ -777,14 +777,14 @@ NOINLINE static void pass11 (size_t ido, size_t l1, const cmplx * restrict cc,
+ #define CH2(a,b) ch[(a)+idl1*(b)]
+ 
+ NOINLINE static int passg (size_t ido, size_t ip, size_t l1,
+-  cmplx * restrict cc, cmplx * restrict ch, const cmplx * restrict wa,
+-  const cmplx * restrict csarr, const int sign)
++  cmplx * __restrict cc, cmplx * __restrict ch, const cmplx * __restrict wa,
++  const cmplx * __restrict csarr, const int sign)
+   {
+   const size_t cdim=ip;
+   size_t ipph = (ip+1)/2;
+   size_t idl1 = ido*l1;
+ 
+-  cmplx * restrict wal=RALLOC(cmplx,ip);
++  cmplx * __restrict wal=RALLOC(cmplx,ip);
+   if (!wal) return -1;
+   wal[0]=(cmplx){1.,0.};
+   for (size_t i=1; i<ip; ++i)
+@@ -1091,8 +1091,8 @@ typedef struct rfftp_plan_i * rfftp_plan;
+ #define CC(a,b,c) cc[(a)+ido*((b)+l1*(c))]
+ #define CH(a,b,c) ch[(a)+ido*((b)+cdim*(c))]
+ 
+-NOINLINE static void radf2 (size_t ido, size_t l1, const double * restrict cc,
+-  double * restrict ch, const double * restrict wa)
++NOINLINE static void radf2 (size_t ido, size_t l1, const double * __restrict cc,
++  double * __restrict ch, const double * __restrict wa)
+   {
+   const size_t cdim=2;
+ 
+@@ -1116,8 +1116,8 @@ NOINLINE static void radf2 (size_t ido, size_t l1, const double * restrict cc,
+       }
+   }
+ 
+-NOINLINE static void radf3(size_t ido, size_t l1, const double * restrict cc,
+-  double * restrict ch, const double * restrict wa)
++NOINLINE static void radf3(size_t ido, size_t l1, const double * __restrict cc,
++  double * __restrict ch, const double * __restrict wa)
+   {
+   const size_t cdim=3;
+   static const double taur=-0.5, taui=0.86602540378443864676;
+@@ -1150,8 +1150,8 @@ NOINLINE static void radf3(size_t ido, size_t l1, const double * restrict cc,
+       }
+   }
+ 
+-NOINLINE static void radf4(size_t ido, size_t l1, const double * restrict cc,
+-  double * restrict ch, const double * restrict wa)
++NOINLINE static void radf4(size_t ido, size_t l1, const double * __restrict cc,
++  double * __restrict ch, const double * __restrict wa)
+   {
+   const size_t cdim=4;
+   static const double hsqt2=0.70710678118654752440;
+@@ -1191,8 +1191,8 @@ NOINLINE static void radf4(size_t ido, size_t l1, const double * restrict cc,
+       }
+   }
+ 
+-NOINLINE static void radf5(size_t ido, size_t l1, const double * restrict cc,
+-  double * restrict ch, const double * restrict wa)
++NOINLINE static void radf5(size_t ido, size_t l1, const double * __restrict cc,
++  double * __restrict ch, const double * __restrict wa)
+   {
+   const size_t cdim=5;
+   static const double tr11= 0.3090169943749474241, ti11=0.95105651629515357212,
+@@ -1247,8 +1247,8 @@ NOINLINE static void radf5(size_t ido, size_t l1, const double * restrict cc,
+ #define CC(a,b,c) cc[(a)+ido*((b)+cdim*(c))]
+ #define CH(a,b,c) ch[(a)+ido*((b)+l1*(c))]
+ NOINLINE static void radfg(size_t ido, size_t ip, size_t l1,
+-  double * restrict cc, double * restrict ch, const double * restrict wa,
+-  const double * restrict csarr)
++  double * __restrict cc, double * __restrict ch, const double * __restrict wa,
++  const double * __restrict csarr)
+   {
+   const size_t cdim=ip;
+   size_t ipph=(ip+1)/2;
+@@ -1391,8 +1391,8 @@ NOINLINE static void radfg(size_t ido, size_t ip, size_t l1,
+ #define CH(a,b,c) ch[(a)+ido*((b)+l1*(c))]
+ #define CC(a,b,c) cc[(a)+ido*((b)+cdim*(c))]
+ 
+-NOINLINE static void radb2(size_t ido, size_t l1, const double * restrict cc,
+-  double * restrict ch, const double * restrict wa)
++NOINLINE static void radb2(size_t ido, size_t l1, const double * __restrict cc,
++  double * __restrict ch, const double * __restrict wa)
+   {
+   const size_t cdim=2;
+ 
+@@ -1416,8 +1416,8 @@ NOINLINE static void radb2(size_t ido, size_t l1, const double * restrict cc,
+       }
+   }
+ 
+-NOINLINE static void radb3(size_t ido, size_t l1, const double * restrict cc,
+-  double * restrict ch, const double * restrict wa)
++NOINLINE static void radb3(size_t ido, size_t l1, const double * __restrict cc,
++  double * __restrict ch, const double * __restrict wa)
+   {
+   const size_t cdim=3;
+   static const double taur=-0.5, taui=0.86602540378443864676;
+@@ -1451,8 +1451,8 @@ NOINLINE static void radb3(size_t ido, size_t l1, const double * restrict cc,
+       }
+   }
+ 
+-NOINLINE static void radb4(size_t ido, size_t l1, const double * restrict cc,
+-  double * restrict ch, const double * restrict wa)
++NOINLINE static void radb4(size_t ido, size_t l1, const double * __restrict cc,
++  double * __restrict ch, const double * __restrict wa)
+   {
+   const size_t cdim=4;
+   static const double sqrt2=1.41421356237309504880;
+@@ -1497,8 +1497,8 @@ NOINLINE static void radb4(size_t ido, size_t l1, const double * restrict cc,
+       }
+   }
+ 
+-NOINLINE static void radb5(size_t ido, size_t l1, const double * restrict cc,
+-  double * restrict ch, const double * restrict wa)
++NOINLINE static void radb5(size_t ido, size_t l1, const double * __restrict cc,
++  double * __restrict ch, const double * __restrict wa)
+   {
+   const size_t cdim=5;
+   static const double tr11= 0.3090169943749474241, ti11=0.95105651629515357212,
+@@ -1558,8 +1558,8 @@ NOINLINE static void radb5(size_t ido, size_t l1, const double * restrict cc,
+ #define CH2(a,b) ch[(a)+idl1*(b)]
+ 
+ NOINLINE static void radbg(size_t ido, size_t ip, size_t l1,
+-  double * restrict cc, double * restrict ch, const double * restrict wa,
+-  const double * restrict csarr)
++  double * __restrict cc, double * __restrict ch, const double * __restrict wa,
++  const double * __restrict csarr)
+   {
+   const size_t cdim=ip;
+   size_t ipph=(ip+1)/ 2;
