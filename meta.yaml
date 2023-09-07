@@ -117,9 +117,7 @@ outputs:
     build:
       include_recipe: False
       run_exports:
-        - {{ pin_subpackage('numpy', min_pin='x.x', max_pin='x.x') }}
-    script: copy_intel_tester.sh  # [unix]
-    script: copy_intel_tester.bat # [win]             
+        - {{ pin_subpackage('numpy', min_pin='x.x', max_pin='x.x') }}           
     requirements:
       host:
         - python
@@ -168,8 +166,6 @@ outputs:
         - {{ pin_subpackage('mkl_random') }}  # [not nomkl]
         - {{ pin_subpackage('mkl_umath') }}  # [not nomkl]
     test:
-      files:
-        - intel_tester_config.py
       requires:
         - {{ compiler('c') }} #[osx and py>38]
         - setuptools <60.0.0
@@ -207,7 +203,6 @@ outputs:
         # test commands
         - python -c "import numpy as np; print(np.__mkl_version__)"
         - f2py -h                # [unix]
-        # - python -c "from intel_tester import test_routine; test_routine.test_exec()"
         - python -c "import numpy; numpy.test({{ param }}, {{ extra }})"
       imports:
         - numpy
